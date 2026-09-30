@@ -1,0 +1,20 @@
+# Microfixd OS frontend -- "the TV".
+# Deploy as a Render Static Site. Point VITE_API_BASE_URL at your
+# Microfixd backend ("the wall outlet"), e.g.
+# https://microfixd-full-ai.onrender.com (the 100--full-AI-MICROFIXD
+# Render web service). Leave it unset to run same-origin with a
+# combined backend deploy.
+services:
+  - type: web
+    name: microfixd-os-frontend
+    runtime: static
+    buildCommand: npm install && npm run build
+    staticHeaders:
+      - path: /assets/*
+        name: cache-control
+        value: public, max-age=31536000, immutable
+    envVars:
+      - key: VITE_API_BASE_URL
+        sync: false
+      - key: NODE_VERSION
+        value: 22.14.0
