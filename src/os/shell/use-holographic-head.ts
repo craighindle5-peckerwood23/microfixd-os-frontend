@@ -23,7 +23,6 @@
 import { useEffect, useRef, type RefObject } from 'react';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { KTX2Loader } from 'three/examples/jsm/loaders/KTX2Loader.js';
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 
 export interface HolographicHeadHandle {
@@ -93,14 +92,16 @@ const DOTS_VERTEX_SHADER = `
     gl_Position = projectionMatrix * mvPosition;
 
     // Form reveal: bottom-up sweep as the presence forms (0 -> 1).
-    float yNorm = clamp(position.y * 4.0 + 0.5, 0.0, 1.0);
-    vReveal = smoothstep(yNorm - 0.15, yNorm + 0.05, uFormProgress);
+    // Head is ~3.3 units tall, centered -- y in [-1.66, 1.66].
+    float yNorm = clamp(position.y * 0.3 + 0.5, 0.0, 1.0);
+    vReveal = smoothstep(yNorm - 0.2, yNorm + 0.05, uFormProgress);
 
     // Per-dot twinkle, de-synced by seed; faster when fully formed.
     float twinkle = 0.75 + 0.25 * sin(uTime * (1.5 + 2.5 * uFormProgress) + aShimmerSeed * 6.2831);
     vBrightness = twinkle;
 
-    gl_PointSize = (2.2 + 1.1 * twinkle) * uPixelRatio * (1.0 / -mvPosition.z) * 0.55;
+    // Camera sits at z ~ 6.9; normalize size against that reference distance.
+    gl_PointSize = (3.4 + 1.7 * twinkle) * uPixelRatio * (6.9 / -mvPosition.z);
   }
 `;
 
@@ -177,8 +178,11 @@ export function useHolographicHead(canvasRef: RefObject<HTMLCanvasElement>) {
     if (!canvas) return;
 
     const scene = new THREE.Scene();
+    // facecap.glb is ~3.3 units tall (verified by parsing the real file:
+    // bounds 2.31 x 3.33 x 3.02). Frame the whole head: fov 30 needs
+    // d = h / (2*tan(15deg)) = 3.3 / 0.536 ~ 6.2, plus margin.
     const camera = new THREE.PerspectiveCamera(30, 1, 0.1, 100);
-    camera.position.set(0, 0.05, 0.55);
+    camera.position.set(0, 0.12, 6.9);
 
     const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
     const pixelRatio = Math.min(window.devicePixelRatio, 2);
@@ -190,11 +194,12 @@ export function useHolographicHead(canvasRef: RefObject<HTMLCanvasElement>) {
     scene.add(headGroup);
     let modelLoaded = false;
 
-    // facecap.glb REQUIRES EXT_meshopt_compression + KHR_texture_basisu
-    // (see extensionsRequired in the file's JSON chunk). Without these the
-    // GLTFLoader parse fails at runtime and we'd fall back to a sphere.
-    const ktx2Loader = new KTX2Loader().setTranscoderPath('/libs/basis/').detectSupport(renderer);
-    const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).setKTX2Loader(ktx2Loader);
+    // facecap.glb requires EXT_meshopt_compression + KHR_mesh_quantization
+    // (see extensionsRequired in the file's JSON chunk; the unused texture
+    // payload was stripped so no KTX2/basis decoder is needed). Without
+    // MeshoptDecoder the parse fails at runtime and we'd fall back to a
+    // sphere -- the 'plain orb' bug.
+    const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
 
     loader.load(
       '/models/facecap.glb',
@@ -225,10 +230,13 @@ export function useHolographicHead(canvasRef: RefObject<HTMLCanvasElement>) {
       },
       undefined,
       (err) => {
-        const fallback = new THREE.Mesh(new THREE.SphereGeometry(0.14, 24, 20), shellMaterial);
+        const fallback = new THREE.Mesh(new THREE.SphereGeometry(1.4, 24, 20), shellMaterial);
         headGroup.add(fallback);
         modelLoaded = true;
         console.error('facecap.glb failed to load, using fallback sphere geometry:', err);
+        // Visible diagnostic (page title) so a fallback is detectable outside
+        // the browser console -- the real model must never silently degrade.
+        document.title = 'Microfixd [HEAD FALLBACK]';
       },
     );
 
@@ -238,14 +246,14 @@ export function useHolographicHead(canvasRef: RefObject<HTMLCanvasElement>) {
     const ringPositions = new Float32Array(ringCount * 3);
     for (let i = 0; i < ringCount; i++) {
       const angle = (i / ringCount) * Math.PI * 2;
-      const radius = 0.32 + Math.random() * 0.05;
+      const radius = 2.7 + Math.random() * 0.45;
       ringPositions[i * 3] = Math.cos(angle) * radius;
-      ringPositions[i * 3 + 1] = -0.22 + (Math.random() - 0.5) * 0.02;
+      ringPositions[i * 3 + 1] = -1.70 + (Math.random() - 0.5) * 0.06;
       ringPositions[i * 3 + 2] = Math.sin(angle) * radius;
     }
     const ringGeometry = new THREE.BufferGeometry();
     ringGeometry.setAttribute('position', new THREE.Float32BufferAttribute(ringPositions, 3));
-    const ringMaterial = new THREE.PointsMaterial({ color: COLOR_NOMINAL, size: 0.006, transparent: true, opacity: 0.7, blending: THREE.AdditiveBlending });
+    const ringMaterial = new THREE.PointsMaterial({ color: COLOR_NOMINAL, size: 0.045, transparent: true, opacity: 0.7, blending: THREE.AdditiveBlending, sizeAttenuation: true });
     const ring = new THREE.Points(ringGeometry, ringMaterial);
     scene.add(ring);
 
