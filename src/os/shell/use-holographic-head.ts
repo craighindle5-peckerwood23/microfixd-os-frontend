@@ -60,7 +60,7 @@ const SHELL_FRAGMENT_SHADER = `
     float fresnel = pow(1.0 - max(dot(viewDir, normalize(vNormal)), 0.0), 2.2);
     float scanline = 0.5 + 0.5 * sin(vWorldPosition.y * 18.0 - uTime * 2.0);
     float scanBand = smoothstep(0.85, 1.0, scanline) * 0.4;
-    float alpha = clamp((fresnel * 0.5 + scanBand * 0.4) * uFormProgress, 0.0, 0.55);
+    float alpha = clamp((fresnel * 0.65 + scanBand * 0.5) * uFormProgress, 0.0, 0.7);
     gl_FragColor = vec4(uColor, alpha);
   }
 `;
@@ -101,7 +101,7 @@ const DOTS_VERTEX_SHADER = `
     vBrightness = twinkle;
 
     // Camera sits at z ~ 6.9; normalize size against that reference distance.
-    gl_PointSize = (3.4 + 1.7 * twinkle) * uPixelRatio * (6.9 / -mvPosition.z);
+    gl_PointSize = (5.2 + 2.4 * twinkle) * uPixelRatio * (6.9 / -mvPosition.z);
   }
 `;
 
@@ -114,10 +114,10 @@ const DOTS_FRAGMENT_SHADER = `
     vec2 uv = gl_PointCoord - 0.5;
     float d = length(uv);
     if (d > 0.5) discard;
-    float dotShape = smoothstep(0.5, 0.12, d);
-    float alpha = dotShape * vBrightness * vReveal * (0.75 + 0.25 * uActiveBoost);
+    float dotShape = smoothstep(0.5, 0.1, d);
+    float alpha = dotShape * vBrightness * vReveal * (0.9 + 0.1 * uActiveBoost);
     if (alpha < 0.01) discard;
-    gl_FragColor = vec4(uColor * (0.8 + 0.4 * uActiveBoost), clamp(alpha, 0.0, 1.0));
+    gl_FragColor = vec4(uColor * (0.85 + 0.5 * uActiveBoost), clamp(alpha, 0.0, 1.0));
   }
 `;
 
@@ -224,11 +224,9 @@ export function useHolographicHead(canvasRef: RefObject<HTMLCanvasElement>) {
           dotsGeometry.setAttribute('aShimmerSeed', new THREE.Float32BufferAttribute(seeds, 1));
           const dots = new THREE.Points(dotsGeometry, dotsMaterial);
           headGroup.add(dots);
-          dotsCountRef.current = positions.length / 3;
           dotsGeometryRef.current = dotsGeometry;
         }
         modelLoaded = true;
-        modelLoadedRef.current = true;
       },
       undefined,
       (err) => {
@@ -236,8 +234,7 @@ export function useHolographicHead(canvasRef: RefObject<HTMLCanvasElement>) {
         headGroup.add(fallback);
         modelLoaded = true;
         console.error('facecap.glb failed to load, using fallback sphere geometry:', err);
-        // Visible diagnostic (page title) so a fallback is detectable outside
-        // the browser console -- the real model must never silently degrade.
+        // Fallback is detectable from outside the browser console too.
         document.title = 'Microfixd [HEAD FALLBACK]';
       },
     );
@@ -264,8 +261,6 @@ export function useHolographicHead(canvasRef: RefObject<HTMLCanvasElement>) {
     let alertActive = false;
     let raf = 0;
     let t = 0;
-    const dotsCountRef = { current: 0 };
-    const modelLoadedRef = { current: false };
 
     function resize() {
       const w = canvas!.clientWidth || 1;
@@ -277,20 +272,8 @@ export function useHolographicHead(canvasRef: RefObject<HTMLCanvasElement>) {
     resize();
     window.addEventListener('resize', resize);
 
-    // One-shot runtime diagnostic in the title: proves (outside the browser
-    // console) whether WebGL is actually drawing the head -- canvas size,
-    // draw calls, dot count. Remove once verified visually.
-    let diagDone = false;
-    function pushDiag() {
-      if (diagDone) return;
-      diagDone = true;
-      const i = renderer.info.render;
-      document.title = `Microfixd [diag ${canvas!.clientWidth}x${canvas!.clientHeight} calls=${i.calls} tris=${i.triangles} pts=${i.points} dots=${dotsCountRef.current} loaded=${modelLoadedRef.current}]`;
-    }
-
     function animate() {
       t += 0.016;
-      if (t > 4) pushDiag();
       const targetColor = alertActive ? COLOR_ALERT : COLOR_NOMINAL;
       shellMaterial.uniforms.uColor.value.lerp(targetColor, 0.05);
       shellMaterial.uniforms.uTime.value = t;
