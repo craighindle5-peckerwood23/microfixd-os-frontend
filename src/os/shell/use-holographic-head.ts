@@ -224,9 +224,11 @@ export function useHolographicHead(canvasRef: RefObject<HTMLCanvasElement>) {
           dotsGeometry.setAttribute('aShimmerSeed', new THREE.Float32BufferAttribute(seeds, 1));
           const dots = new THREE.Points(dotsGeometry, dotsMaterial);
           headGroup.add(dots);
+          dotsCountRef.current = positions.length / 3;
           dotsGeometryRef.current = dotsGeometry;
         }
         modelLoaded = true;
+        modelLoadedRef.current = true;
       },
       undefined,
       (err) => {
@@ -262,6 +264,8 @@ export function useHolographicHead(canvasRef: RefObject<HTMLCanvasElement>) {
     let alertActive = false;
     let raf = 0;
     let t = 0;
+    const dotsCountRef = { current: 0 };
+    const modelLoadedRef = { current: false };
 
     function resize() {
       const w = canvas!.clientWidth || 1;
@@ -273,8 +277,20 @@ export function useHolographicHead(canvasRef: RefObject<HTMLCanvasElement>) {
     resize();
     window.addEventListener('resize', resize);
 
+    // One-shot runtime diagnostic in the title: proves (outside the browser
+    // console) whether WebGL is actually drawing the head -- canvas size,
+    // draw calls, dot count. Remove once verified visually.
+    let diagDone = false;
+    function pushDiag() {
+      if (diagDone) return;
+      diagDone = true;
+      const i = renderer.info.render;
+      document.title = `Microfixd [diag ${canvas!.clientWidth}x${canvas!.clientHeight} calls=${i.calls} tris=${i.triangles} pts=${i.points} dots=${dotsCountRef.current} loaded=${modelLoadedRef.current}]`;
+    }
+
     function animate() {
       t += 0.016;
+      if (t > 4) pushDiag();
       const targetColor = alertActive ? COLOR_ALERT : COLOR_NOMINAL;
       shellMaterial.uniforms.uColor.value.lerp(targetColor, 0.05);
       shellMaterial.uniforms.uTime.value = t;
