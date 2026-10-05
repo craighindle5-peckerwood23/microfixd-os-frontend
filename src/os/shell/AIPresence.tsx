@@ -6,7 +6,7 @@
 // file, in case the 2D look is wanted again for a lighter-weight
 // context -- nothing was deleted.
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useOS } from '../state/os-context.tsx';
 import { useHolographicHead } from './use-holographic-head.ts';
 
@@ -22,7 +22,8 @@ const STATE_LABEL: Record<string, string> = {
 export function AIPresence({ compact = false }: { compact?: boolean }) {
   const { aiState } = useOS();
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const head = useHolographicHead(canvasRef);
+  const [headError,setHeadError] = useState('');
+  const head = useHolographicHead(canvasRef,setHeadError);
 
   useEffect(() => {
     const isActive = aiState !== 'idle';
@@ -34,6 +35,7 @@ export function AIPresence({ compact = false }: { compact?: boolean }) {
   return (
     <div className={`relative ${compact ? 'h-40' : 'h-full'} w-full`} data-ai-state={aiState}>
       <canvas ref={canvasRef} className="h-full w-full" />
+      {headError && <p role="status" className="absolute inset-x-4 top-1/2 text-center text-sm text-slate-400">{headError}</p>}
       <div
         className={`pointer-events-none absolute left-1/2 top-2 -translate-x-1/2 rounded-full border px-3 py-1 text-[10px] tracking-widest font-mono ${
           aiState === 'alert'
