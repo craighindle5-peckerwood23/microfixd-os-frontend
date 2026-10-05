@@ -170,7 +170,7 @@ function collectVertexPositions(root: THREE.Object3D): Float32Array | null {
   return merged;
 }
 
-export function useHolographicHead(canvasRef: RefObject<HTMLCanvasElement>) {
+export function useHolographicHead(canvasRef: RefObject<HTMLCanvasElement>, onError?: (message:string)=>void) {
   const stateRef = useRef<HolographicHeadHandle | null>(null);
 
   useEffect(() => {
@@ -184,7 +184,9 @@ export function useHolographicHead(canvasRef: RefObject<HTMLCanvasElement>) {
     const camera = new THREE.PerspectiveCamera(30, 1, 0.1, 100);
     camera.position.set(0, 0.12, 6.9);
 
-    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+    let renderer: THREE.WebGLRenderer;
+    try { renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true }); }
+    catch { onError?.("3D head unavailable: this browser could not initialize WebGL. OS controls remain available."); return; }
     const pixelRatio = Math.min(window.devicePixelRatio, 2);
     renderer.setPixelRatio(pixelRatio);
 
