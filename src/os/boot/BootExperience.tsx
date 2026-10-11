@@ -25,6 +25,11 @@ const BOOT_LINES = [
 
 type Props = { adminKey: string; tenantId: string; onDone: () => void };
 
+/**
+ * Runs the staged holographic boot sequence with sound and backend status.
+ * Uses the operator key and tenant to load recent activity, then calls onDone
+ * when the sequence finishes.
+ */
 export function BootExperience({ adminKey, tenantId, onDone }: Props) {
   const [stage, setStage] = useState(0); // 0 boot log, 1 emergence, 2 awareness, 3 greeting, 4 interaction, 5 done
   const [lineIndex, setLineIndex] = useState(0);

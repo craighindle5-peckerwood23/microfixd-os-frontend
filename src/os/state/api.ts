@@ -17,6 +17,11 @@ const API_BASE = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
  * raw fetch()/EventSource URL outside of request() below. */
 export const apiUrl = (path: string): string => `${API_BASE}${path}`;
 
+/**
+ * Fetches a backend-relative path with operator authorization and tenant headers.
+ * Caller-provided headers override defaults. Returns parsed JSON as T, falling
+ * back to an empty object if parsing fails, and throws for non-success responses.
+ */
 export const request = async <T,>(
   path: string,
   key: string,

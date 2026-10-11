@@ -18,14 +18,23 @@ const destinations:{id:Workspace;label:string;detail:string;icon:string}[]=[
  {id:'laboratory',label:'WORKSPACE / SANDBOX',detail:'Files, tools & governed builds',icon:'⌘'},
  {id:'system',label:'SYSTEM INFRASTRUCTURE',detail:'Runtime & credential health',icon:'⚙'},
 ];
+/** Renders dashboard content in a titled panel with the selected color tone. */
 function Panel({title,children,tone='cyan'}:{title:string;children:ReactNode;tone?:string}){
  return <section className={`reference-panel ${tone}`}><h2>{title}</h2>{children}</section>;
 }
+/**
+ * Renders operator access settings and verifies a key against the current tenant
+ * before storing it in OS state. Displays verification failures in the form.
+ */
 function Connection(){
  const {adminKey,setAdminKey,tenantId}=useOS();const [key,setKey]=useState(''),[error,setError]=useState(''),[busy,setBusy]=useState(false);
  const connect=async()=>{if(!key.trim())return;setBusy(true);setError('');try{await request('/api/autonomy/introspection',key.trim(),tenantId);setAdminKey(key.trim());setKey('');}catch(e){setError(e instanceof Error?e.message:String(e));}finally{setBusy(false);}};
  return <div className="reference-connection"><label htmlFor="operator-key">Operator access</label><p>{adminKey?'A key is set. Verify a replacement before changing access.':'Connect your backend to activate commands and live telemetry.'}</p><input id="operator-key" type="password" autoComplete="off" placeholder="Admin key" value={key} onChange={e=>setKey(e.target.value)} onKeyDown={e=>{if(e.key==='Enter')void connect();}}/><button disabled={busy||!key.trim()} onClick={()=>void connect()}>{busy?'Verifying…':'Verify & connect'}</button><p role="status">{error}</p></div>;
 }
+/**
+ * Shows the boot sequence, then the operator dashboard with chat and telemetry.
+ * Manages workspace and settings overlays, including dismissal with Escape.
+ */
 export function OSShell(){
  const {adminKey,lastError,tenantId,booted,setBooted,setWorkspace,aiState}=useOS();
  const [workspaceOpen,setWorkspaceOpen]=useState(false),[settings,setSettings]=useState(false),[settingsTab,setSettingsTab]=useState('General'),[clock,setClock]=useState(new Date());

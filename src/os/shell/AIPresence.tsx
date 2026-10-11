@@ -19,6 +19,10 @@ const STATE_LABEL: Record<string, string> = {
   alert: 'ALERT',
 };
 
+/**
+ * Renders the holographic artwork and status label for the current AI state.
+ * Compact mode uses a fixed height; otherwise the presence fills its container.
+ */
 export function AIPresence({ compact = false }: { compact?: boolean }) {
   const { aiState } = useOS();
   const canvasRef = useRef<HTMLCanvasElement>(null);
