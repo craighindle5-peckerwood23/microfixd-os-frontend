@@ -11,7 +11,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { apiUrl } from '../state/api.ts';
-import { useHolographicHead } from '../shell/use-holographic-head.ts';
+import { useReferenceHead as useHolographicHead } from '../shell/use-reference-head.ts';
 import { audioManager } from '../shell/audio-manager.ts';
 
 const BOOT_LINES = [
@@ -40,7 +40,7 @@ export function BootExperience({ adminKey, tenantId, onDone }: Props) {
 
   useEffect(() => {
     if (stage !== 3 || !adminKey) return;
-    fetch(apiUrl('/api/autonomy/usage-report'), { headers: { 'x-microfixd-admin-key': adminKey, 'x-microfixd-tenant': tenantId } })
+    fetch(apiUrl('/api/autonomy/usage-report'), { headers: { Authorization: `Bearer ${adminKey}`, 'x-microfixd-admin-key': adminKey, 'x-microfixd-tenant': tenantId } })
       .then((r) => r.json())
       .then((body) => setRecentCount(`${body?.inMemoryWindow?.eventCount ?? 0} events recorded since last restart.`))
       .catch(() => setRecentCount('Recent activity unavailable.'));
