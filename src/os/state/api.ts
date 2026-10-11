@@ -32,8 +32,10 @@ export const request = async <T,>(
     ...options,
     headers: {
       ...(options.body ? { 'Content-Type': 'application/json' } : {}),
-      'Authorization': `Bearer ${key}`,
-      'x-microfixd-admin-key': key,
+      ...(key ? {
+        'Authorization': `Bearer ${key}`,
+        'x-microfixd-admin-key': key,
+      } : {}),
       'x-microfixd-tenant': tenantId,
       ...(options.headers || {}),
     },
